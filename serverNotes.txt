@@ -1,0 +1,100 @@
+# references
+https://github.com/adrianmihalko/raspberrypiwireguard
+https://www.reddit.com/r/pihole/comments/bnihyz/guide_how_to_install_wireguard_on_a_raspberry_pi/
+
+#set environment on sudo
+sudo su 
+
+#instal kernel headers
+sudo apt install raspberrypi-kernel-headers libelf-dev libmnl-dev build-essential git
+
+# ↑ Some of these dependencies are already installed on your Pi but run the whole command anyway just to be sure (as it varies between models)
+
+echo "deb http://deb.debian.org/debian/ unstable main" > /etc/apt/sources.list.d/unstable.list
+
+printf 'Package: *\nPin: release a=unstable\nPin-Priority: 90\n' > /etc/apt/preferences.d/limit-unstable
+
+# ↑ These commands may change in the future, when this post gets old go to this link and check before running them (check the section for Debian): https://www.wireguard.com/install/
+
+sudo apt update 
+
+# ↑ Ignore the error 
+
+sudo apt   install dirmngr
+
+sudo apt-key adv --keyserver   keyserver.ubuntu.com --recv-keys 7638D0442B90D010
+
+sudo apt-key adv --keyserver   keyserver.ubuntu.com --recv-keys 04EE7237B7D453EC
+ 
+sudo apt update
+
+sudo apt install wireguard
+
+perl -pi -e 's/#{1,}?net.ipv4.ip_forward ?= ?(0|1)/net.ipv4.ip_forward = 1/g' /etc/sysctl.conf
+
+reboot
+
+
+PART 2: GENERATE PRIVATE AND PUBLIC KEYS FOR SERVER AND CLIENT
+sysctl net.ipv4.ip_forward 
+
+sudo su
+
+cd /etc/wireguard
+
+umask 077
+
+wg genkey | tee peer1_privatekey | wg pubkey > peer1_publickey
+
+wg genkey | tee server_privatekey | wg pubkey > server_publickey
+
+ls  
+
+# ↑ Verify the keys got generated
+
+peer1_privatekey peer1_publickey server_privatekey server_publickey
+You can view your keys using the cat command like so:
+
+cat server_publickey
+
+cat server_privatekey
+
+cat peer1_publickey
+
+cat peer1_privatekey
+
+#create wg0.conf
+[Interface]
+Address = 10.9.0.1/24
+ListenPort = 25642  
+DNS = 1.1.1.1
+PrivateKey = KA02JvJE26CN8d+NXwC4cO28QY9522yfS5z53JyCWUU=
+#replace eth0 with the interface open to the internet (e.g might be wlan0 if wifi or eth0 for ethernet or anything else you name your interface)
+PostUp = iptables -A FORWARD -i %i -j ACCEPT; iptables -A FORWARD -o %i -j ACCEPT; iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+PostDown = iptables -D FORWARD -i %i -j ACCEPT; iptables -D FORWARD -o %i -j ACCEPT; iptables -t nat -D POSTROUTING -o eth0 -j MASQUERADE
+
+[Peer]
+#Peer-1
+PublicKey = qs7Avav0HWqASGgQW6G4kMTwlFzQlcRtSnNfidy6IDQ=
+AllowedIPs = 10.9.0.2/32 
+
+
+
+
+After your client profile has been imported to your phone run the following commands to finish up the installation on the Pi:
+
+systemctl enable wg-quick@wg0
+
+chown -R root:root /etc/wireguard/
+
+chmod -R og-rwx /etc/wireguard/*
+(The first command enables Wireguard to autostart on boot and the last two commands secures the contents of ‘/etc/wireguard/’ so it can only be read by the administrator as it contains your private and public keys + vpn configuration files.)
+
+start service
+
+wg-quick down wg0
+wg-quick up wg0
+
+
+# get status 
+sudo wg
