@@ -1,0 +1,37 @@
+cd /etc/wireguard
+
+#generate the key pair
+wg genkey | tee phone_privatekey | wg pubkey > phone_publickey
+
+#get cllent private key and publicy key
+#get server public key
+
+
+
+#create android2.conf
+nano android2.conf
+
+[Interface]
+PrivateKey = <contents of mobile-privatekey>
+Address = 10.9.0.3/32
+DNS = <dns ip>
+
+[Peer]
+PublicKey = <server pub key>
+Endpoint = <server ip>:<server port>
+AllowedIPs = 0.0.0.0/0, ::/0
+
+
+#add peer to server
+[Peer]
+#Moms phone
+PublicKey = <phone pub key>
+AllowedIPs = 10.9.0.3/32
+
+
+sudo wg
+
+#install qrencode
+sudo apt-get install qrencode -y 
+#encode qr code using qrencode
+qrencode -t utf8 < android2.conf
